@@ -114,12 +114,18 @@ localparam N         = 376; // This is the number of times we have to shift A_i
                  end 
                 end
                 
-            SHIFT: 
+            SHIFT: // yet to implement closing logic 
                 begin
                 AShiftMuxSignal <= 1'b1; // the first (INIT) time, its zero, after that, we change it and keep it on 1 
                 AShiftClkSignal <= 1;
                 counter <= counter + 1;
                 end 
+            // have to implement this logic all and to implement the closing state              
+            // TA told me that the while loop is actually not really a while loop as the max that C will be after the 
+            // iterations will be (0,2M) (open brackets) thus we need to maximally substract it once 
+            // So calculate the substraction and look at the result of the substraction 
+            // (look at the MSB: if its negative, then keep the original, otherwise
+            // use the the substracted value!!
             FINAL_SUB: 
                 begin
                     substraction = 1;
