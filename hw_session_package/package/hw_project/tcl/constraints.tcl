@@ -38,8 +38,8 @@ if { $topname == "ecdsa_project_wrapper"} {
     
 } else { 
     puts "Constraints for hw_evals"
-    #Generate a clock with a period of 100MHz
-    create_clock -period 10 -name clk_gen -add [get_ports clk]
+    #Generate a clock with a period of 150MHz
+    create_clock -period 5.15 -name clk_gen -add [get_ports clk]
     set_property PACKAGE_PIN L16      [get_ports clk]
     set_property PACKAGE_PIN R19      [get_ports data_ok]
     set_property PACKAGE_PIN P19      [get_ports resetn]

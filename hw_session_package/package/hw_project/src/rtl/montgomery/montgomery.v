@@ -116,13 +116,18 @@ module montgomery(
             INIT: begin
                 state_done = 1;
             end
-
+            
             ADD_B: begin
                 adderMuxSignal = 1;
                 adderResultMux = 0;
-                adder_start = (state != prev_state);
-
-                if (adder_done)
+            
+                if (a_reg[0]) begin
+                    adder_start = (state != prev_state);
+            
+                    if (adder_done)
+                        state_done = 1;
+                end
+                else
                     state_done = 1;
             end
 
@@ -196,37 +201,35 @@ module montgomery(
     // BLOCK B
 
     assign BSelectorMuxOutput = a_reg[0] ? in_b : 377'b0;
-
-    assign adderMuxOutput = adderMuxSignal ?
-                            {3'b0, BSelectorMuxOutput} :
-                            {3'b0, in_m};
+    assign adderMuxOutput = adderMuxSignal ? {3'b0, BSelectorMuxOutput} : {3'b0, in_m};
 
 
-    // BLOCK C
-
-    assign CShiftMuxOutput = CShiftMuxSignal ? adder_out : {1'b0, C};
-
-    assign adderResultMuxOutput = adderResultMux ?
-                                  CShiftMuxOutput >> 1 : adder_out;
-
-    // C FlipFlop
-    always @(posedge clk or negedge resetn) begin
-        if (!resetn)
-            C <= 0;
-
-        else if (state == INIT)
-            C <= 0;
-
-        else if (state == ADD_B && adder_done)
-            C <= adderResultMuxOutput[379:0];
-
-        else if (state == ADD_M && (!C[0] || adder_done))
-            C <= adderResultMuxOutput[379:0];
-
-        else if (state == FINAL_SUB && adder_done) begin
-            if (!adder_out[380])
+        // BLOCK C
+    
+        assign CShiftMuxOutput = CShiftMuxSignal ? adder_out : {1'b0, C};
+    
+        assign adderResultMuxOutput = adderResultMux ? CShiftMuxOutput >> 1 : adder_out;
+        
+        // C FlipFlop logic
+        always @(posedge clk or negedge resetn) begin
+            if (!resetn)
+                C <= 0;
+        
+            else if (state == INIT) // INIT state
+                C <= 0;
+            
+            // we replace C only if we have to add B and adder has done that in ADD_B state
+            else if (state == ADD_B && a_reg[0] && adder_done)
                 C <= adderResultMuxOutput[379:0];
+        
+            // No addition to be performed if LSB of C is 0 or either we completed the summation with M (ADD_M state)
+            else if (state == ADD_M && (!C[0] || adder_done))
+                C <= adderResultMuxOutput[379:0];
+        
+            // the while loop mostly substract M once as the sum will be bounded by (0,2M) -> open brackets (FINAL_SUB state)
+            else if (state == FINAL_SUB && adder_done) begin
+                if (!adder_out[380])
+                    C <= adderResultMuxOutput[379:0];
+            end
         end
-    end
-
 endmodule
