@@ -10,6 +10,69 @@
 
 #include <stdint.h>
 
+
+uint32_t mont_reduce_asm(
+    uint32_t *t,
+    uint32_t *n,
+    uint32_t m,
+    uint32_t size
+);
+
+void cross_products_asm(
+    uint32_t *t_tail,
+    uint32_t *b_ptr,
+    uint32_t *a_ptr,
+    uint32_t count
+);
+
+void reduce_cross_asm(
+    uint32_t *t,
+    uint32_t *n,
+    uint32_t *b_ptr,
+    uint32_t *a_ptr,
+    uint32_t m,
+    uint32_t size,
+    uint32_t count
+);
+
+void mul_phase_asm(
+    uint32_t *t,
+    uint32_t *a,
+    uint32_t *b,
+    uint32_t size
+);
+
+void final_reduce_asm(
+    uint32_t *t,
+    uint32_t *n,
+    uint32_t *res,
+    uint32_t size
+);
+
+void reduce_cross_asm(
+    uint32_t *t,
+    uint32_t *n,
+    uint32_t *b_ptr,
+    uint32_t *a_ptr,
+    uint32_t nprime0,
+    uint32_t size,
+    uint32_t count
+);
+
+void clear_t_asm(
+    uint32_t *t,
+    uint32_t count
+);
+
+void reduce_all_asm(
+    uint32_t *t,
+    uint32_t *n,
+    uint32_t *b,
+    uint32_t *a,
+    uint32_t nprime0,
+    uint32_t size
+);
+uint32_t mul_accumulate_asm(uint32_t *t,uint32_t *b,uint32_t ai,uint32_t count);
 // a will be in register R0, b in R1, c in R2
 // Result is stored in register r0
 uint32_t add_3(uint32_t a, uint32_t b, uint32_t c);
