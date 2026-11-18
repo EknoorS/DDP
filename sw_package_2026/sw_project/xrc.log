@@ -1,14 +1,14 @@
-Wed Sep 30 16:31:46 2026: Server was asked to start on port: '40217'
-Wed Sep 30 16:31:46 2026: Server is using token UUID: '55394a74-19e4-4162-835e-b87c819098f1'
-Wed Sep 30 16:31:46 2026: Attempting to start server on port '40217'
-Wed Sep 30 16:31:46 2026: XRC main fifo: created main fifo '/tmp/xrcmain55394a74-19e4-4162-835e-b87c819098f1', fd read = 11
-Wed Sep 30 16:31:46 2026: Running Rule Check Server
-Wed Sep 30 16:31:46 2026: Version 1.6.1
-Wed Sep 30 16:31:47 2026: Rule Check Server: Accepted socket connection from client
-Wed Sep 30 16:31:47 2026: EXCHANGE_TOKEN received, server token: 55394a74-19e4-4162-835e-b87c819098f1, passed token: 55394a74-19e4-4162-835e-b87c819098f1
-Wed Sep 30 18:36:21 2026: STOP_SERVER received, server token: 55394a74-19e4-4162-835e-b87c819098f1, passed token: 55394a74-19e4-4162-835e-b87c819098f1
-Wed Sep 30 18:36:21 2026: Socket received request to stop server.
-Wed Sep 30 18:36:21 2026: SERVER: destructor for server bound to port 40217
-Wed Sep 30 18:36:21 2026: XRC main fifo: Good unlink of /tmp/xrcmain55394a74-19e4-4162-835e-b87c819098f1
-Wed Sep 30 18:36:21 2026: Server exiting with status 0.
-Wed Sep 30 18:36:21 2026: Closing log file.
+Tue Nov 10 15:34:10 2026: Server was asked to start on port: '36185'
+Tue Nov 10 15:34:10 2026: Server is using token UUID: 'e2d31aee-29d4-4ea3-8979-082c7780f6a8'
+Tue Nov 10 15:34:10 2026: Attempting to start server on port '36185'
+Tue Nov 10 15:34:10 2026: XRC main fifo: created main fifo '/tmp/xrcmaine2d31aee-29d4-4ea3-8979-082c7780f6a8', fd read = 11
+Tue Nov 10 15:34:10 2026: Running Rule Check Server
+Tue Nov 10 15:34:10 2026: Version 1.6.1
+Tue Nov 10 15:34:11 2026: Rule Check Server: Accepted socket connection from client
+Tue Nov 10 15:34:11 2026: EXCHANGE_TOKEN received, server token: e2d31aee-29d4-4ea3-8979-082c7780f6a8, passed token: e2d31aee-29d4-4ea3-8979-082c7780f6a8
+Tue Nov 10 15:44:22 2026: STOP_SERVER received, server token: e2d31aee-29d4-4ea3-8979-082c7780f6a8, passed token: e2d31aee-29d4-4ea3-8979-082c7780f6a8
+Tue Nov 10 15:44:22 2026: Socket received request to stop server.
+Tue Nov 10 15:44:22 2026: SERVER: destructor for server bound to port 36185
+Tue Nov 10 15:44:22 2026: XRC main fifo: Good unlink of /tmp/xrcmaine2d31aee-29d4-4ea3-8979-082c7780f6a8
+Tue Nov 10 15:44:22 2026: Server exiting with status 0.
+Tue Nov 10 15:44:22 2026: Closing log file.

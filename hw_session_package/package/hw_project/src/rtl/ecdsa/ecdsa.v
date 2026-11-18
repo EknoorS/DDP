@@ -4,15 +4,24 @@ module ecdsa (
     output wire   [ 3:0] leds,
 
     // input registers                     // output registers
-    input  wire   [31:0] rin0,             output wire   [31:0] rout0,
-    input  wire   [31:0] rin1,             output wire   [31:0] rout1,
-    input  wire   [31:0] rin2,             output wire   [31:0] rout2,
-    input  wire   [31:0] rin3,             output wire   [31:0] rout3,
-    input  wire   [31:0] rin4,             output wire   [31:0] rout4,
-    input  wire   [31:0] rin5,             output wire   [31:0] rout5,
-    input  wire   [31:0] rin6,             output wire   [31:0] rout6,
-    input  wire   [31:0] rin7,             output wire   [31:0] rout7,
-
+    input  wire   [31:0] rin0,   // command/start          
+    input  wire   [31:0] rin1,   // Address of A           
+    input  wire   [31:0] rin2,   // Address of output         
+    input  wire   [31:0] rin3,   // Address of B          
+    input  wire   [31:0] rin4,   // Address of M           
+    input  wire   [31:0] rin5,             
+    input  wire   [31:0] rin6,             
+    input  wire   [31:0] rin7,    
+             
+    output wire   [31:0] rout0,
+    output wire   [31:0] rout1,
+    output wire   [31:0] rout2,
+    output wire   [31:0] rout3,
+    output wire   [31:0] rout4,
+    output wire   [31:0] rout5,
+    output wire   [31:0] rout6,
+    output wire   [31:0] rout7,
+    
     // dma signals
     input  wire [1023:0] dma_rx_data,      output wire [1023:0] dma_tx_data,
     output wire [  31:0] dma_rx_address,   output wire [  31:0] dma_tx_address,
@@ -22,12 +31,75 @@ module ecdsa (
     input  wire          dma_error
   );
 
+
+    reg [376:0] A;
+    reg [376:0] B;
+    reg [376:0] M;
+
+    reg [1:0] rx_index; // determines which of A, B or M we are receiving 
+                        // 0: A ; 1: B, 2: M 
+
+
+
   // In this example three input registers are used.
   // The first one is used for giving a command to FPGA.
   // The others are for setting DMA input and output data addresses.
   wire [31:0] command;
   assign command        = rin0; // use rin0 as command
-  assign dma_rx_address = rin1; // use rin1 as input  data address
+  assign dma_rx_address = (rx_index == 0) ? rin1 :
+                            (rx_index == 1) ? rin3 :
+                                              rin4;
+                                              
+ // now we are going to put the DMA data in the registers A, B, and M 
+ // by iterating over rin1, rin3, rin4 by counter rx_index                                              
+                                              
+  always @(posedge clk) begin
+    if (!resetn) begin
+        rx_index <= 0;
+        A <= 0;
+        B <= 0;
+        M <= 0;
+    end
+    else begin
+        if (state == STATE_IDLE)
+            rx_index <= 0;
+
+        if (state == STATE_RX_WAIT && dma_done) begin
+            case (rx_index)
+                0: A <= dma_rx_data[376:0];
+                1: B <= dma_rx_data[376:0];
+                2: M <= dma_rx_data[376:0];
+            endcase
+
+            if (rx_index < 2)
+                rx_index <= rx_index + 1;
+        end
+    end
+end                                            
+    // instantiate montgomery and supporting vars                                           
+    wire mont_start;
+    wire mont_done;
+    wire [376:0] mont_result;
+
+    montgomery mont (
+        .clk(clk),
+        .resetn(resetn),
+        .start(mont_start),
+        .in_a(A),
+        .in_b(B),
+        .in_m(M),
+        .result(mont_result),
+        .done(mont_done)
+    );                                             
+                                                  
+                                                  
+                                              
+                                              
+                                              
+                                              
+                                              
+                                              
+                                              
   assign dma_tx_address = rin2; // use rin2 as output data address
 
   // Only one output register is used. It will the status of FPGA's execution.
@@ -55,7 +127,8 @@ module ecdsa (
     STATE_COMPUTE  = 3'd3,
     STATE_TX       = 3'd4,
     STATE_TX_WAIT  = 3'd5,
-    STATE_DONE     = 3'd6;
+    STATE_DONE     = 3'd6,
+    STATE_COMPUTE_WAIT = 3'd7;
 
   // The state machine
   reg [2:0] state = STATE_IDLE;
@@ -79,15 +152,26 @@ module ecdsa (
       end
 
       // Wait the completion of dma.
-      STATE_RX_WAIT : begin
-        next_state <= (dma_done) ? STATE_COMPUTE : state;
-      end
+    STATE_RX_WAIT: begin
+        if (dma_done) begin
+            if (rx_index == 2)
+                next_state <= STATE_COMPUTE;
+            else
+                next_state <= STATE_RX;
+        end
+        else
+            next_state <= state;
+    end
 
-      // A state for dummy computation for this example. Because this
-      // computation takes only single cycle, go to TX state immediately
-      STATE_COMPUTE : begin
-        next_state <= STATE_TX;
-      end
+          // A state for dummy computation for this example. Because this
+          // computation takes only single cycle, go to TX state immediately
+        STATE_COMPUTE: begin
+            next_state <= STATE_COMPUTE_WAIT;
+        end
+        
+        STATE_COMPUTE_WAIT: begin
+            next_state <= mont_done ? STATE_TX : state;
+        end
 
       // Wait, if dma is not idle. Otherwise, start dma operation and go to
       // next state to wait its completion.
@@ -126,6 +210,7 @@ module ecdsa (
   always@(posedge clk)
     state <= (~resetn) ? STATE_IDLE : next_state;
 
+  assign mont_start = (state == STATE_COMPUTE);
 
   // Here is a register for the computation. Sample the dma data input in
   // STATE_RX_WAIT. Update the data with a dummy operation in STATE_COMP.
@@ -147,7 +232,7 @@ module ecdsa (
   always@(posedge clk)
     case (state)
       STATE_RX_WAIT : r_data <= (dma_done) ? dma_rx_data : r_data;
-      STATE_COMPUTE : r_data <= {32'h00000000, r_data[991:0]};
+      STATE_COMPUTE : r_data <= {32'hDEADBEEF, r_data[991:0]};
     endcase
   assign dma_tx_data = r_data;
 

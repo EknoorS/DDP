@@ -1,27 +1,0 @@
-2026-09-30T18:35:42.29144200255-18:35:42 **** Incremental Build of configuration Release for project sw_design ****
-000-make all 
-000-make[1]: Entering directory '/users/students/r0933784/DDP/sw_package_2026/sw_project/project_sw/sw_design/Release'
-000-make --no-print-directory pre-build
-000-a9-linaro-pre-build-step
-000- 
-000-make --no-print-directory main-build
-000-Building file: ../src/mp_arith.c
-000-Invoking: ARM v7 gcc compiler
-000-arm-none-eabi-gcc -Wall -O2 -c -fmessage-length=0 -MT"src/mp_arith.o" -mcpu=cortex-a9 -mfpu=vfpv3 -mfloat-abi=hard -I/users/students/r0933784/DDP/sw_package_2026/sw_project/project_sw/ecc_project_wrapper/export/ecc_project_wrapper/sw/ecc_project_wrapper/standalone_domain/bspinclude/include -MMD -MP -MF"src/mp_arith.d" -MT"src/mp_arith.o" -o "src/mp_arith.o" "../src/mp_arith.c"
-000-Finished building: ../src/mp_arith.c
-000- 
-000-Building target: sw_design.elf
-000-Invoking: ARM v7 gcc linker
-000-arm-none-eabi-gcc -mcpu=cortex-a9 -mfpu=vfpv3 -mfloat-abi=hard -Wl,-build-id=none -specs=Xilinx.spec -Wl,-T -Wl,../src/lscript.ld -L/users/students/r0933784/DDP/sw_package_2026/sw_project/project_sw/ecc_project_wrapper/export/ecc_project_wrapper/sw/ecc_project_wrapper/standalone_domain/bsplib/lib -o "sw_design.elf" ./src/platform/interface.o ./src/platform/platform.o  ./src/asm_func.o ./src/main.o ./src/montgomery.o ./src/mp_arith.o ./src/warmup.o   -Wl,--start-group,-lxil,-lgcc,-lc,--end-group
-000-Finished building target: sw_design.elf
-000- 
-000-Invoking: ARM v7 Print Size
-000-arm-none-eabi-size sw_design.elf  |tee "sw_design.elf.size"
-000-   text	   data	    bss	    dec	    hex	filename
-000-  56883	   2552	  22648	  82083	  140a3	sw_design.elf
-000-Finished building: sw_design.elf.size
-000- 
-000-make[1]: Leaving directory '/users/students/r0933784/DDP/sw_package_2026/sw_project/project_sw/sw_design/Release'
-00255-
-18:35:42 Build Finished (took 265ms)
-

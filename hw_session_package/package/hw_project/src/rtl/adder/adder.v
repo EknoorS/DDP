@@ -1,5 +1,7 @@
 `timescale 1ns / 1ps
+// first cycle does nothing onlny copying it to the register
 
+// motivate why small area and long delay (delay means clock cycle seen from the software -> clkfreq has been accounted for) 
 module adder(
   input  wire          clk,
   input  wire          resetn,

@@ -49,25 +49,40 @@ int main() {
   // Register file shared with FPGA
   volatile uint32_t* HWreg = (volatile uint32_t*)0x40400000;
 
-  #define COMMAND 0
-  #define RXADDR  1
-  #define TXADDR  2
-  #define STATUS  0
+	#define COMMAND  0
+	#define RXADDR_A 1
+	#define TXADDR   2
+	#define RXADDR_B 3
+	#define RXADDR_M 4
+	#define STATUS   0
 
   // Aligned input and output memory shared with FPGA
-  alignas(128) uint32_t idata[32];
+  alignas(128) uint32_t idata_A[32];
+  alignas(128) uint32_t idata_B[32];
+  alignas(128) uint32_t idata_M[32];
+
   alignas(128) uint32_t odata[32];
 
   // Initialize odata to all zero's
   memset(odata,0,128);
 
-  for (int i=0; i<32; i++) {
-    idata[i] = i+1;
+  // for now we populate it using random tings -> yet to be done offially for A, B and M
+  for (int i = 0; i < 32; i++) {
+      idata_A[i] = G_X[i];
+      idata_B[i] = G_Y[i];
+      idata_M[i] = modulus[i];
+
+      odata[i] = 0;
   }
 
   // Write to input regs (SW to HW)
-  HWreg[RXADDR] = (uint32_t)&idata; // store address idata in reg1
-  HWreg[TXADDR] = (uint32_t)&odata; // store address odata in reg2
+
+  HWreg[RXADDR_A] = (uint32_t)idata_A;
+  HWreg[RXADDR_B] = (uint32_t)idata_B;
+  HWreg[RXADDR_M] = (uint32_t)idata_M;
+  HWreg[TXADDR] = (uint32_t)odata;  // store address odata in reg2
+
+
 
   // Read from output regs (HW to SW)
   printf("STATUS %08X\r\n", (unsigned int)HWreg[STATUS]);
@@ -101,3 +116,11 @@ STOP_TIMING
 
   return 0;
 }
+
+
+//Register	FPGA signal	New purpose
+//HWreg[0]	rin0	Command/start
+//HWreg[1]	rin1	Address of A
+//HWreg[2]	rin2	Address of output
+//HWreg[3]	rin3	Address of B
+//HWreg[4]	rin4	Address of M
