@@ -228,14 +228,26 @@ end
   // In the waveform, you will still see the 1024 underlying bits from which the 377 MSB's are the ones that you are working with here!
   // IMPORTANT!
   
-  reg [1023:0] r_data = 1024'h0;
-  always@(posedge clk)
-    case (state)
-      STATE_RX_WAIT : r_data <= (dma_done) ? dma_rx_data : r_data;
-      STATE_COMPUTE : r_data <= {32'hDEADBEEF, r_data[991:0]};
-    endcase
-  assign dma_tx_data = r_data;
-
+  // 
+  
+    reg [1023:0] r_data;
+    
+    always @(posedge clk) begin
+        if (!resetn)
+            r_data <= 0;
+    
+        else if (state == STATE_COMPUTE_WAIT && mont_done) begin
+            r_data <= {647'b0, mont_result};
+    
+            $display("Montgomery A      = %h", A);
+            $display("Montgomery B      = %h", B);
+            $display("Montgomery M      = %h", M);
+            $display("Montgomery result = %h", mont_result);
+        end
+    end
+    
+    assign dma_tx_data = r_data;
+    
 
   // Status signals to the CPU
   wire isStateIdle = (state == STATE_IDLE);
