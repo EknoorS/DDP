@@ -1,235 +1,67 @@
-
 `timescale 1ns / 1ps
-
-module montgomery(
-    input           clk,
-    input           resetn,
-    input           start,
-    input  [376:0] in_a,
-    input  [376:0] in_b,
-    input  [376:0] in_m,
+module montgomery (
+    input clk, resetn, start,
+    input [376:0] in_a, in_b, in_m,
     output [376:0] result,
-    output          done
+    output done
 );
-
-    // adder
-    reg adder_start;
+    localparam IDLE = 3'd0, ADD_B = 3'd1, ADD_M = 3'd2,
+               FINAL_SUB = 3'd3, DONE = 3'd4;
+    reg [2:0] state;
+    reg [8:0] counter;
+    reg [376:0] a_reg;
+    reg [379:0] C;
+    reg issued;
     wire adder_done;
     wire [380:0] adder_out;
-    reg substraction;
+    wire use_adder = (state == ADD_B && a_reg[0]) ||
+                     (state == ADD_M && C[0]) || state == FINAL_SUB;
+    wire adder_start = use_adder && !issued;
+    wire [379:0] adder_b = state == ADD_B ? {3'b0, in_b} : {3'b0, in_m};
 
-    reg [379:0] C;
-    wire [379:0] adderMuxOutput;
+    // Keep B and M stable until done, as in the course interface.
+    adder dut (.clk(clk), .resetn(resetn), .start(adder_start),
+               .subtract(state == FINAL_SUB), .in_a(C), .in_b(adder_b),
+               .result(adder_out), .done(adder_done));
+    assign done = state == DONE;
+    assign result = C[376:0];
 
-    adder dut (
-        .clk      (clk),
-        .resetn   (resetn),
-        .start    (adder_start),
-        .subtract (substraction),
-        .in_a     (C),
-        .in_b     (adderMuxOutput),
-        .result   (adder_out),
-        .done     (adder_done)
-    );
-
-    // Group A
-    wire [376:0] AShiftMuxOutput;
-    reg AShiftMuxSignal;
-    reg [376:0] a_reg;
-
-    // Group B
-    reg adderMuxSignal;
-    wire [376:0] BSelectorMuxOutput;
-
-    // Group C
-    reg adderResultMux;
-    reg CShiftMuxSignal;
-    wire [380:0] CShiftMuxOutput;
-    wire [380:0] adderResultMuxOutput;
-
-    // STATES
-    localparam IDLE      = 3'd0,
-               INIT      = 3'd1,
-               ADD_B     = 3'd2,
-               ADD_M     = 3'd3,
-               SHIFT     = 3'd4,
-               FINAL_SUB = 3'd5,
-               DONE      = 3'd6;
-
-    localparam N = 376;
-
-    reg [8:0] counter;
-    reg [2:0] state;
-    reg [2:0] next_state;
-    reg [2:0] prev_state;
-    reg state_done;
-
-
-    // Next state logic
-    always @(*) begin
-        case (state)
-            IDLE:      next_state = start ? INIT : IDLE;
-            INIT:      next_state = ADD_B;
-            ADD_B:     next_state = ADD_M;
-            ADD_M:     next_state = SHIFT;
-            SHIFT:     next_state = (counter < N) ? ADD_B : FINAL_SUB;
-            FINAL_SUB: next_state = DONE;
-            DONE:      next_state = IDLE;
-            default:   next_state = IDLE;
-        endcase
-    end
-
-
-    // Change state when current state is finished
     always @(posedge clk or negedge resetn) begin
         if (!resetn) begin
             state <= IDLE;
-            prev_state <= IDLE;
-        end
-        else begin
-            prev_state <= state;
-
-            if (state_done)
-                state <= next_state;
-        end
-    end
-
-
-    // Set control signals depending on state
-    always @(*) begin
-        // Default values
-        state_done = 0;
-        adder_start = 0;
-        substraction = 0;
-        AShiftMuxSignal = 0;
-        adderMuxSignal = 0;
-        adderResultMux = 0;
-        CShiftMuxSignal = 0;
-
-        case (state)
-
-            IDLE: begin
-                if (start)
-                    state_done = 1;
-            end
-
-            INIT: begin
-                state_done = 1;
-            end
-            
-            ADD_B: begin
-                adderMuxSignal = 1;
-                adderResultMux = 0;
-            
-                if (a_reg[0]) begin
-                    adder_start = (state != prev_state);
-            
-                    if (adder_done)
-                        state_done = 1;
-                end
-                else
-                    state_done = 1;
-            end
-
-            ADD_M: begin
-                adderMuxSignal = 0;
-                adderResultMux = 1;
-
-                if (C[0]) begin
-                    CShiftMuxSignal = 1;
-                    adder_start = (state != prev_state);
-
-                    if (adder_done)
-                        state_done = 1;
-                end
-                else begin
-                    CShiftMuxSignal = 0;
-                    state_done = 1;
-                end
-            end
-
-            SHIFT: begin
-                AShiftMuxSignal = 1;
-                state_done = 1;
-            end
-
-            FINAL_SUB: begin
-                adderMuxSignal = 0;
-                substraction = 1;
-                adderResultMux = 0;
-                adder_start = (state != prev_state);
-
-                if (adder_done)
-                    state_done = 1;
-            end
-
-            DONE: begin
-                state_done = 1;
-            end
-
-        endcase
-    end
-
-
-    // DONE STATE LOGIC
-    assign done = (state == DONE);
-    assign result = C[376:0];
-
-
-    // BLOCK A
-
-    // MUX
-    assign AShiftMuxOutput = AShiftMuxSignal ? a_reg >> 1 : in_a;
-
-    // FF and counter
-    always @(posedge clk or negedge resetn) begin
-        if (!resetn) begin
+            C <= 0;
+            counter <= 0;
             a_reg <= 0;
-            counter <= 0;
-        end
-        else if (state == INIT) begin
-            a_reg <= AShiftMuxOutput;
-            counter <= 0;
-        end
-        else if (state == SHIFT) begin
-            a_reg <= AShiftMuxOutput;
-            counter <= counter + 1;
+            issued <= 0;
+        end else begin
+            if (adder_start) issued <= 1;
+            else if (adder_done) issued <= 0;
+            case (state)
+                IDLE: if (start) begin
+                    C <= 0;
+                    a_reg <= in_a;
+                    counter <= 0;
+                    state <= ADD_B;
+                end
+                ADD_B: if (!a_reg[0] || adder_done) begin
+                    if (a_reg[0]) C <= adder_out[379:0];
+                    state <= ADD_M;
+                end
+                ADD_M: if (!C[0] || adder_done) begin
+                    // Commit one bit only after its optional addition finishes.
+                    if (C[0]) C <= adder_out[380:1];
+                    else C <= C >> 1;
+                    a_reg <= a_reg >> 1;
+                    counter <= counter + 1'b1;
+                    state <= counter == 9'd376 ? FINAL_SUB : ADD_B;
+                end
+                FINAL_SUB: if (adder_done) begin
+                    if (!adder_out[380]) C <= adder_out[379:0];
+                    state <= DONE;
+                end
+                DONE: state <= IDLE;
+                default: state <= IDLE;
+            endcase
         end
     end
-
-
-    // BLOCK B
-
-    assign BSelectorMuxOutput = a_reg[0] ? in_b : 377'b0;
-    assign adderMuxOutput = adderMuxSignal ? {3'b0, BSelectorMuxOutput} : {3'b0, in_m};
-
-
-        // BLOCK C
-    
-        assign CShiftMuxOutput = CShiftMuxSignal ? adder_out : {1'b0, C};
-    
-        assign adderResultMuxOutput = adderResultMux ? CShiftMuxOutput >> 1 : adder_out;
-        
-        // C FlipFlop logic
-        always @(posedge clk or negedge resetn) begin
-            if (!resetn)
-                C <= 0;
-        
-            else if (state == INIT) // INIT state
-                C <= 0;
-            
-            // we replace C only if we have to add B and adder has done that in ADD_B state
-            else if (state == ADD_B && a_reg[0] && adder_done)
-                C <= adderResultMuxOutput[379:0];
-        
-            // No addition to be performed if LSB of C is 0 or either we completed the summation with M (ADD_M state)
-            else if (state == ADD_M && (!C[0] || adder_done))
-                C <= adderResultMuxOutput[379:0];
-        
-            // the while loop mostly substract M once as the sum will be bounded by (0,2M) -> open brackets (FINAL_SUB state)
-            else if (state == FINAL_SUB && adder_done) begin
-                if (!adder_out[380])
-                    C <= adderResultMuxOutput[379:0];
-            end
-        end
 endmodule

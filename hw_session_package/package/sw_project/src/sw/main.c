@@ -1,6 +1,13 @@
 #include "common.h"
-#include "sw/ec.h"
+#include "ec.h"
 #include <string.h>
+
+#ifndef RUN_SIGNING_DEMO
+#define RUN_SIGNING_DEMO 0
+#endif
+// Set this symbol to 1 in the Vitis debugger to use the same ELF and bitstream.
+volatile unsigned demo_enabled = RUN_SIGNING_DEMO;
+int run_signing_demo(const Point *g);
 
 extern Field modulus, message, K_X_Modn, s, R_N;
 extern Field G_X, G_Y, G_Z, G_T, Public_X, Public_Y, Public_Z, Public_T;
@@ -15,15 +22,18 @@ static void load_point(Point *p, const Field x, const Field y,
     memcpy(p->coord[T], t, sizeof(Field));
 }
 
-static int check_point(const char *name, const Point *p, const Point *expected) {
-    for (unsigned i = 0; i < 4; ++i) {
-        for (unsigned w = 0; w < 32; ++w) {
-            if (p->coord[i][w] != expected->coord[i][w]) {
-                xil_printf("%s.%c word %d: got %08x expected %08x\r\n",
-                           name, "XYZT"[i], w, p->coord[i][w], expected->coord[i][w]);
-                return 0;
-            }
-        }
+// Different addition orders can return the same point with a different scale.
+static int same_point(const Point *a, const Point *b) {
+    static const Field zero = {0};
+    Field left, right;
+    if (!memcmp(a->coord[Z], zero, sizeof(Field)) ||
+        !memcmp(b->coord[Z], zero, sizeof(Field))) return 0;
+    for (unsigned axis = X; axis <= Y; ++axis) {
+        int rc = montgomery_mult(a->coord[axis], b->coord[Z], modulus, left);
+        if (rc) return rc;
+        rc = montgomery_mult(b->coord[axis], a->coord[Z], modulus, right);
+        if (rc) return rc;
+        if (memcmp(left, right, sizeof(Field))) return 0;
     }
     return 1;
 }
@@ -33,7 +43,7 @@ static int run(void) {
     Field product, altered;
     int rc = accelerator_check();
     if (rc) {
-        xil_printf("FPGA ID mismatch: program the new ECA1 bitstream.\r\n");
+        xil_printf("FPGA ID mismatch: program the Shamir / merged-shift build.\r\n");
         return rc;
     }
     rc = montgomery_mult(G_X, R_N, modulus, product);
@@ -49,16 +59,19 @@ static int run(void) {
     rc = verify_signature(message, K_X_Modn, s, modulus, &g, &p, &k, &c, &cp);
     STOP_TIMING
     if (rc < 0) return rc;
-    int c_ok = check_point("C", &c, &expected_c);
-    int cp_ok = check_point("C prime", &cp, &expected_cp);
-    if (rc != 1 || !c_ok || !cp_ok) return -5;
-    xil_printf("PASS: valid signature, C and C prime match.\r\n");
+    if (rc != 1) return -5;
+    rc = same_point(&c, &expected_c);
+    if (rc != 1) return rc < 0 ? rc : -5;
+    // sK still follows the original scalar loop, so its exact coordinates agree.
+    if (memcmp(&cp, &expected_cp, sizeof(Point))) return -5;
+    xil_printf("PASS: signature and both reference points match.\r\n");
     memcpy(altered, message, sizeof(Field));
     altered[0] ^= 1U;
     rc = verify_signature(altered, K_X_Modn, s, modulus, &g, &p, &k, &c, &cp);
     if (rc < 0) return rc;
     if (rc != 0) return -6;
     xil_printf("PASS: changed message rejected.\r\n");
+    if (demo_enabled) return run_signing_demo(&g);
     return 0;
 }
 
